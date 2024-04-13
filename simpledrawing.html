@@ -15,19 +15,21 @@
             height: 1000px;
             touch-action: none; /* Empêcher le navigateur de gérer les événements tactiles par défaut */
         }
+
         #controls {
             display: flex;
             flex-direction: column;
             align-items: center;
-            margin-bottom: 20px;
+            margin-bottom: 5px;
         }
+
         input, button {
-            margin: 20px;
+            margin: 5px;
             font-size: 30px;
         }
+
         button {
-            width: 200px;
-            padding: 10px;
+            margin: 5px;
         }
     </style>
     <script src="https://hammerjs.github.io/dist/hammer.min.js"></script>
@@ -35,9 +37,11 @@
 <body>
     <div id="controls">
         <input type="file" id="uploadBackground" accept="image/*">
+        <button id="saveButton">Export</button>
         <label for="opacitySlider">Opacité de l'arrière-plan :</label>
         <input type="range" id="opacitySlider" min="0" max="1" step="0.01" value="1">
-        <button id="saveButton">Sauvegarder</button>
+        <label for="lineWidthSlider">Largeur du trait :</label>
+        <input type="range" id="lineWidthSlider" min="1" max="20" step="1" value="3">
     </div>
     <canvas id="drawingCanvas"></canvas>
 
@@ -48,6 +52,8 @@
         let backgroundImage = null;
         let backgroundOpacity = 1;
         let paths = [];
+        ctx.lineWidth = 3; // Définir la largeur de ligne initiale
+
         
         canvas.width = 1000;
         canvas.height = 1000;
@@ -65,6 +71,10 @@
         function handleStart(e) {
             isDrawing = true;
             const touch = e.touches ? getTouchPos(canvas, e) : { x: e.offsetX, y: e.offsetY };
+            
+            // Mettre à jour ctx.lineWidth à chaque début de dessin pour assurer la cohérence
+            ctx.lineWidth = document.getElementById('lineWidthSlider').value;  // Assurez-vous que la largeur utilisée est celle du slider
+        
             paths.push({ points: [{ x: touch.x, y: touch.y }], color: ctx.strokeStyle, width: ctx.lineWidth });
             e.preventDefault(); // Pour les événements de toucher
         }
@@ -122,19 +132,29 @@
             ctx.globalAlpha = 1; // Restaurer l'opacité pour le dessin à venir
         }
 		
-		function redrawCanvas() {
+        function redrawCanvas() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             drawBackgroundImage();
-
+            
             paths.forEach(path => {
                 ctx.beginPath();
+                ctx.lineCap = 'round'; // Extrémités arrondies pour une transition douce
                 ctx.strokeStyle = path.color;
                 ctx.lineWidth = path.width;
+                
+                // Paramètres de flou
+                ctx.shadowBlur = 2; // Ajustez pour plus ou moins de flou
+                ctx.shadowColor = 'rgba(0, 0, 0, 1)'; // Couleur de l'ombre
+        
                 path.points.forEach((point, index) => {
                     if (index === 0) ctx.moveTo(point.x, point.y);
                     else ctx.lineTo(point.x, point.y);
                 });
                 ctx.stroke();
+                
+                // Réinitialiser les paramètres de l'ombre pour éviter de les appliquer sur d'autres éléments
+                ctx.shadowBlur = 0;
+                ctx.shadowColor = 'transparent';
             });
         }
 
@@ -147,6 +167,10 @@
                 backgroundImage.src = event.target.result;
             };
             reader.readAsDataURL(file);
+        });
+
+        document.getElementById('lineWidthSlider').addEventListener('input', function(e) {
+            ctx.lineWidth = e.target.value;
         });
 
         document.getElementById('opacitySlider').addEventListener('input', function(e) {
@@ -169,23 +193,26 @@
             tempCanvas.width = canvas.width;
             tempCanvas.height = canvas.height;
             const tempCtx = tempCanvas.getContext('2d');
-
+        
+            // Remplir le fond du canvas temporaire avec du blanc
             tempCtx.fillStyle = 'white';
             tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
-            drawBackgroundImage(); // Dessinez l'image de fond sur le canvas temporaire
-
-            // Copiez les chemins de dessin sur le canvas temporaire
+        
+            // Copiez les chemins de dessin sur le canvas temporaire, en incluant les effets
             paths.forEach(path => {
                 tempCtx.beginPath();
+                tempCtx.lineCap = 'round';
                 tempCtx.strokeStyle = path.color;
                 tempCtx.lineWidth = path.width;
+                tempCtx.shadowBlur = 2; // Assurez-vous que ces valeurs correspondent à celles de redrawCanvas
+                tempCtx.shadowColor = 'rgba(0, 0, 0, 1)';
                 path.points.forEach((point, index) => {
                     if (index === 0) tempCtx.moveTo(point.x, point.y);
                     else tempCtx.lineTo(point.x, point.y);
                 });
                 tempCtx.stroke();
             });
-
+        
             // Convertissez le canvas temporaire en une image PNG et téléchargez-la
             const image = tempCanvas.toDataURL('image/png');
             const link = document.createElement('a');
@@ -193,6 +220,8 @@
             link.href = image;
             link.click();
         });
+        
     </script>
 </body>
 </html>
+
