@@ -4,18 +4,20 @@ Simple Drawing is a minimalistic drawing application built with HTML, CSS, and J
 
 ## Features
 
-- Drawing on canvas using mouse or touch input.
-- Uploading custom background images.
-- Adjusting the opacity of the background.
-- Saving drawings as PNG images.
+- Drawing on the canvas with mouse or touch inputs.
+- Ability to upload custom background images.
+- Adjustable background opacity through a slider.
+- Adjustable line width for drawing.
+- Saving the canvas drawing as a PNG file.
 
 ## Usage
 
 1. Open the `index.html` file in a web browser.
-2. Use the mouse or touch input to draw on the canvas.
-3. Upload a custom background image using the file input.
-4. Adjust the opacity of the background using the slider.
-5. Click the "Save" button to download the drawing as a PNG image.
+2. Draw on the canvas using either the mouse or touch inputs.
+3. Use the line width slider to adjust the thickness of your strokes.
+4. Upload a custom background image using the designated file input.
+5. Use the slider to adjust the background image's opacity.
+6. Click the "Save" button to export and download the canvas as a PNG image.
 
 ## Dependencies
 
