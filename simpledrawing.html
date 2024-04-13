@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Dessin</title>
+    <style>    
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        #drawingCanvas {
+            border: 4px dashed black;
+            width: 1000px;
+            height: 1000px;
+            touch-action: none; /* Empêcher le navigateur de gérer les événements tactiles par défaut */
+        }
+        #controls {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        input, button {
+            margin: 20px;
+            font-size: 30px;
+        }
+        button {
+            width: 200px;
+            padding: 10px;
+        }
+    </style>
+    <script src="https://hammerjs.github.io/dist/hammer.min.js"></script>
+</head>
+<body>
+    <div id="controls">
+        <input type="file" id="uploadBackground" accept="image/*">
+        <label for="opacitySlider">Opacité de l'arrière-plan :</label>
+        <input type="range" id="opacitySlider" min="0" max="1" step="0.01" value="1">
+        <button id="saveButton">Sauvegarder</button>
+    </div>
+    <canvas id="drawingCanvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById('drawingCanvas');
+        const ctx = canvas.getContext('2d');
+        let isDrawing = false;
+        let backgroundImage = null;
+        let backgroundOpacity = 1;
+        let paths = [];
+        
+        canvas.width = 1000;
+        canvas.height = 1000;
+
+        // Hammer.js pour le geste de pincement
+        var hammertime = new Hammer(canvas);
+        hammertime.get('pinch').set({ enable: true });
+
+        hammertime.on('pinch', function(e) {
+            // Laisser le navigateur gérer le zoom naturellement pourrait ne pas fonctionner ici,
+            // puisque le dessin sur canvas prend le dessus. Considérez ajuster la vue du canvas ici.
+            console.log('Pinch gesture detected');
+        });
+
+        function handleStart(e) {
+            isDrawing = true;
+            const touch = e.touches ? getTouchPos(canvas, e) : { x: e.offsetX, y: e.offsetY };
+            paths.push({ points: [{ x: touch.x, y: touch.y }], color: ctx.strokeStyle, width: ctx.lineWidth });
+            e.preventDefault(); // Pour les événements de toucher
+        }
+
+        function handleMove(e) {
+            if (!isDrawing) return;
+            const touch = e.touches ? getTouchPos(canvas, e) : { x: e.offsetX, y: e.offsetY };
+            draw(touch);
+            e.preventDefault(); // Pour les événements de toucher
+        }
+
+        function handleEnd(e) {
+            isDrawing = false;
+            e.preventDefault(); // Pour les événements de toucher
+        }
+
+        function getTouchPos(canvasDom, touchEvent) {
+            var rect = canvasDom.getBoundingClientRect();
+            return {
+                x: touchEvent.touches[0].clientX - rect.left,
+                y: touchEvent.touches[0].clientY - rect.top
+            };
+        }
+
+        function draw(pos) {
+            if (!isDrawing) return;
+            const path = paths[paths.length - 1];
+            path.points.push({ x: pos.x, y: pos.y });
+            redrawCanvas();
+        }
+
+		function drawBackgroundImage() {
+            if (!backgroundImage) return;
+
+            const imgRatio = backgroundImage.width / backgroundImage.height;
+            const canvasRatio = canvas.width / canvas.height;
+            let drawWidth, drawHeight, offsetX, offsetY;
+
+            // Calcul pour conserver le ratio d'aspect de l'image
+            if (imgRatio > canvasRatio) {
+                drawHeight = canvas.height;
+                drawWidth = canvas.height * imgRatio;
+                offsetX = (canvas.width - drawWidth) / 2;
+                offsetY = 0;
+            } else {
+                drawWidth = canvas.width;
+                drawHeight = canvas.width / imgRatio;
+                offsetX = 0;
+                offsetY = (canvas.height - drawHeight) / 2;
+            }
+
+            // Application de l'opacité sélectionnée à l'image de fond
+            ctx.globalAlpha = backgroundOpacity;
+            ctx.drawImage(backgroundImage, offsetX, offsetY, drawWidth, drawHeight);
+            ctx.globalAlpha = 1; // Restaurer l'opacité pour le dessin à venir
+        }
+		
+		function redrawCanvas() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            drawBackgroundImage();
+
+            paths.forEach(path => {
+                ctx.beginPath();
+                ctx.strokeStyle = path.color;
+                ctx.lineWidth = path.width;
+                path.points.forEach((point, index) => {
+                    if (index === 0) ctx.moveTo(point.x, point.y);
+                    else ctx.lineTo(point.x, point.y);
+                });
+                ctx.stroke();
+            });
+        }
+
+        document.getElementById('uploadBackground').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                backgroundImage = new Image();
+                backgroundImage.onload = redrawCanvas;
+                backgroundImage.src = event.target.result;
+            };
+            reader.readAsDataURL(file);
+        });
+
+        document.getElementById('opacitySlider').addEventListener('input', function(e) {
+            backgroundOpacity = e.target.value;
+            redrawCanvas();
+        });
+
+        canvas.addEventListener('mousedown', handleStart, false);
+        canvas.addEventListener('mousemove', handleMove, false);
+        canvas.addEventListener('mouseup', handleEnd, false);
+        canvas.addEventListener('mouseout', handleEnd, false);
+
+        canvas.addEventListener('touchstart', handleStart, false);
+        canvas.addEventListener('touchmove', handleMove, false);
+        canvas.addEventListener('touchend', handleEnd, false);
+        canvas.addEventListener('touchcancel', handleEnd, false);
+
+        document.getElementById('saveButton').addEventListener('click', function() {
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = canvas.width;
+            tempCanvas.height = canvas.height;
+            const tempCtx = tempCanvas.getContext('2d');
+
+            tempCtx.fillStyle = 'white';
+            tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+            drawBackgroundImage(); // Dessinez l'image de fond sur le canvas temporaire
+
+            // Copiez les chemins de dessin sur le canvas temporaire
+            paths.forEach(path => {
+                tempCtx.beginPath();
+                tempCtx.strokeStyle = path.color;
+                tempCtx.lineWidth = path.width;
+                path.points.forEach((point, index) => {
+                    if (index === 0) tempCtx.moveTo(point.x, point.y);
+                    else tempCtx.lineTo(point.x, point.y);
+                });
+                tempCtx.stroke();
+            });
+
+            // Convertissez le canvas temporaire en une image PNG et téléchargez-la
+            const image = tempCanvas.toDataURL('image/png');
+            const link = document.createElement('a');
+            link.download = 'dessin.png';
+            link.href = image;
+            link.click();
+        });
+    </script>
+</body>
+</html>
