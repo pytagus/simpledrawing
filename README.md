@@ -10,6 +10,8 @@ Simple Drawing is a minimalistic drawing application built with HTML, CSS, and J
 - Adjustable line width for drawing.
 - Saving the canvas drawing as a PNG file.
 
+![SimpleDrawing](simpledrawing.png)
+
 ## Usage
 
 1. Open the `index.html` file in a web browser.
